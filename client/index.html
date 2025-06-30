@@ -1,50 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <title>Продажи - Интерфейс продавца</title>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <title>Вход продавца</title>
 </head>
 <body>
-  <h1>Форма продаж</h1>
-  <form id="saleForm">
-    <div id="productButtons"></div>
-    <label>Имя продавца: <input type="text" id="sellerName" required></label><br>
-    <button type="submit">Оформить продажу</button>
+  <h1>Вход продавца</h1>
+  <form action="/login" method="post">
+    <label>Ваше имя: <input name="seller" required /></label><br />
+    <label>Точка продаж:
+      <select name="point" required>
+        <% points.forEach(p => { %>
+          <option value="<%= p %>"><%= p %></option>
+        <% }); %>
+      </select>
+    </label><br />
+    <button type="submit">Войти</button>
   </form>
-  <script>
-    const products = [
-      { name: "Самса", price: 18 },
-      { name: "Конверт Мясо", price: 15 },
-      { name: "Конверт Творог", price: 15 },
-      { name: "Пицца", price: 16 },
-      { name: "Шашлык куриный", price: 25 },
-      { name: "Круассан шоколад", price: 15 }
-    ];
-    const container = document.getElementById("productButtons");
-    products.forEach(p => {
-      const el = document.createElement("div");
-      el.innerHTML = \`
-        <label>\${p.name} (\${p.price}р): 
-          <input type="number" name="product_\${p.name}" value="0" min="0" />
-        </label><br>\`;
-      container.appendChild(el);
-    });
-    document.getElementById("saleForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = document.getElementById("sellerName").value;
-      const items = {};
-      products.forEach(p => {
-        const qty = parseInt(document.querySelector(\`input[name='product_\${p.name}']\`).value || 0);
-        if (qty > 0) items[p.name] = qty;
-      });
-      await fetch("/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seller: name, items })
-      });
-      alert("Продажа оформлена!");
-      e.target.reset();
-    });
-  </script>
 </body>
 </html>
