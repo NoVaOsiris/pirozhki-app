@@ -91,6 +91,16 @@ const users = [
   { username: "pyshka", password: "1234", seller: "Пышка" },
   { username: "klio", password: "1234", seller: "Клио" },
 ];
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  const user = users.find(u => u.username === username && u.password === password);
+  if (user) {
+    res.json({ seller: user.seller });
+  } else {
+    res.status(401).send("Неверный логин или пароль");
+  }
+});
+
 
 app.post('/sale', (req, res) => {
     const { item, quantity } = req.body;
