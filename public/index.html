@@ -1,45 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>Продажа пирожков</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <title>Вход - Пирожки</title>
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="loginForm">
-    <h2>Выбор точки продаж</h2>
-    <select id="sellerName">
-      <option disabled selected>Выберите вашу точку</option>
-      <option value="Мечникова">Мечникова</option>
-      <option value="Бородинка">Бородинка</option>
-      <option value="Меркурий">Меркурий</option>
-      <option value="Почта">Почта</option>
-      <option value="Обжорка">Обжорка</option>
-      <option value="Пышка">Пышка</option>
-      <option value="Клио">Клио</option>
-    </select>
-    <br><br>
-    <button onclick="login()">Войти</button>
-  </div>
-<div id="loginForm">
-  <h2>Вход продавца</h2>
-  <input type="text" id="username" placeholder="Логин"><br><br>
-  <input type="password" id="password" placeholder="Пароль"><br><br>
-  <button onclick="login()">Войти</button>
-</div>
-  <h2>Выберите товар:</h2>
-  <button onclick="sell('Пирожок с мясом')">🥟 С мясом</button>
-  <button onclick="sell('Пирожок с капустой')">🥟 С капустой</button>
+    <div class="login-container">
+        <h2>Вход</h2>
+        <form id="loginForm">
+            <input type="text" id="name" placeholder="Имя" required />
+            <input type="password" id="password" placeholder="Пароль" required />
+            <button type="submit">Войти</button>
+        </form>
+        <div id="error" class="error-msg"></div>
+    </div>
 
-  <script>
-    function sell(item) {
-      const quantity = prompt("Сколько штук?");
-      fetch('/sale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item, quantity: Number(quantity) })
-      }).then(() => alert("Продажа записана"));
-    }
-  </script>
+    <script src="main.js"></script>
 </body>
 </html>

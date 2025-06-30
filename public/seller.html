@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <title>Продавец - Пирожки</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="container">
+        <h2>Продажи</h2>
+        <div id="sellerInfo"></div>
+        <div id="productsList"></div>
+
+        <h3>Выбранные товары:</h3>
+        <table id="cartTable" border="1">
+            <thead>
+                <tr>
+                    <th>Товар</th>
+                    <th>Цена</th>
+                    <th>Количество</th>
+                    <th>Сумма</th>
+                    <th>Удалить</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div>
+            <strong>Итого: </strong><span id="totalPrice">0</span> руб.
+        </div>
+
+        <button id="submitSale">Оформить продажу</button>
+        <div id="message"></div>
+    </div>
+
+    <script src="main.js"></script>
+    <script>
+        const seller = JSON.parse(localStorage.getItem('seller'));
+        if (!seller || seller.role !== 'seller') {
+            window.location.href = 'index.html';
+        } else {
+            document.getElementById('sellerInfo').innerText = `Вы вошли как: ${seller.name}`;
+        }
+
+        let products = [];
+        let cart = [];
+
+        function updateCartTable() {
+            const tbody = document.querySelector('#cartTable tbody');
+            tbody.innerHTML = '';
+            let total = 0;
+            cart.forEach((item, idx) => {
+                const sum = item.price * item.quantity;
+                total += sum;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+              <td>${item.name}</td>
+              <td>${item.price}</td>
+              <td>${item.quantity}</td>
+              <td>${sum}</td>
+              <td><button data-idx="${idx}">X</button></td>
+            `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('totalPrice').innerText = total;
+            tbody.querySelectorAll('button').forEach(btn => {
+                btn.onclick = e => {
+                    const idx = +e.target.dataset.idx;
+                    cart.splice(idx, 1);
+                    updateCartTable();
+                };
+            });
+        }
+
+        function loadProducts() {
+            fetch('/api/products')
+                .then(res => res.json())
+                .then(data => {
+                    products = data;
+
+                    // Сортируем по имени (алфавитный порядок)
+                    products.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+                    const list = document.getElementById('productsList');
+                    list.innerHTML = '';
+
+                    products.forEach(p => {
+                        const btn = document.createElement('button');
+                        btn.textContent = `${p.name} (${p.price}р)`;
+                        btn.onclick = () => {
+                            const exist = cart.find(x => x.id === p.id);
+                            if (exist) {
+                                exist.quantity++;
+                            } else {
+                                cart.push({ id: p.id, name: p.name, price: p.price, quantity: 1 });
+                            }
+                            updateCartTable();
+                        };
+                        list.appendChild(btn);
+                    });
+                });
+        }
+
+
+        document.getElementById('submitSale').onclick = () => {
+            if (cart.length === 0) {
+                alert('Добавьте товары в продажу');
+                return;
+            }
+            const items = cart.map(i => ({ product_id: i.id, quantity: i.quantity }));
+            fetch('/api/sales', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seller_id: seller.id, items })
+            })
+                .then(res => res.json())
+                .then(resp => {
+                    if (resp.success) {
+                        document.getElementById('message').innerText = 'Продажа оформлена!';
+                        cart = [];
+                        updateCartTable();
+                    } else {
+                        document.getElementById('message').innerText = 'Ошибка: ' + (resp.error || 'Неизвестная ошибка');
+                    }
+                });
+        };
+
+        loadProducts();
+        updateCartTable();
+    </script>
+</body>
+</html>

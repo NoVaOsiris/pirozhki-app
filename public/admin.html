@@ -1,103 +1,163 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Админка - Продажи пирожков</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background-color: #f4f4f4; }
-    input, select { margin: 10px 0; padding: 5px; }
-    button { padding: 5px 10px; cursor: pointer; }
-  </style>
+    <meta charset="UTF-8" />
+    <title>Админ - Пирожки</title>
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h2>Отчёт по продажам пирожков</h2>
+    <div class="container">
+        <h2>Админка</h2>
+        <div id="adminInfo"></div>
 
-  <label>
-    Фильтр по дате: 
-    <input type="date" id="dateFilter" />
-  </label>
+        <h3>Товары</h3>
+        <table id="productsTable" border="1">
+            <thead>
+                <tr><th>ID</th><th>Название</th><th>Цена</th><th>Действия</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
 
-  <label>
-    Фильтр по товару: 
-    <select id="itemFilter">
-      <option value="">Все</option>
-      <option value="Пирожок с мясом">Пирожок с мясом</option>
-      <option value="Пирожок с капустой">Пирожок с капустой</option>
-    </select>
-  </label>
+        <h3>Добавить/Изменить товар</h3>
+        <form id="productForm">
+            <input type="hidden" id="prodId" />
+            <input type="text" id="prodName" placeholder="Название" required />
+            <input type="number" id="prodPrice" placeholder="Цена" required min="0" />
+            <button type="submit">Сохранить</button>
+            <button type="button" id="cancelEdit">Отмена</button>
+        </form>
 
-  <button onclick="loadSales()">Обновить</button>
-  <button onclick="exportCSV()">Экспорт в CSV</button>
+        <h3>Отчёт по продажам</h3>
+        <label>Выбери дату: <input type="date" id="salesDate" /></label>
+        <button id="loadSales">Загрузить продажи</button>
+        <table id="salesTable" border="1">
+            <thead>
+                <tr><th>Точка</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Время</th><th>Сумма</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
 
-  <table id="salesTable">
-    <thead>
-      <tr>
-        <th>Время</th>
-        <th>Товар</th>
-        <th>Количество</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    </div>
 
-  <script>
-    async function loadSales() {
-      const dateFilter = document.getElementById('dateFilter').value;
-      const itemFilter = document.getElementById('itemFilter').value;
-
-      let response = await fetch('/admin');
-      let sales = await response.json();
-
-      // Фильтрация по дате и товару
-      if (dateFilter) {
-        sales = sales.filter(sale => sale.time.startsWith(dateFilter));
-      }
-      if (itemFilter) {
-        sales = sales.filter(sale => sale.item === itemFilter);
-      }
-
-      const tbody = document.querySelector('#salesTable tbody');
-      tbody.innerHTML = '';
-
-      sales.forEach(sale => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${new Date(sale.time).toLocaleString('ru-RU')}</td>
-          <td>${sale.item}</td>
-          <td>${sale.quantity}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function exportCSV() {
-      const rows = [];
-      const headers = ['Время', 'Товар', 'Количество'];
-      rows.push(headers.join(';'));
-
-      const tbody = document.querySelector('#salesTable tbody');
-      for (const row of tbody.rows) {
-        const cols = [];
-        for (const cell of row.cells) {
-          cols.push('"' + cell.innerText + '"');
+    <script src="main.js"></script>
+    <script>
+        const admin = JSON.parse(localStorage.getItem('seller'));
+        if (!admin || admin.role !== 'admin') {
+            window.location.href = 'index.html';
+        } else {
+            document.getElementById('adminInfo').innerText = `Вы вошли как: ${admin.name}`;
         }
-        rows.push(cols.join(';'));
-      }
 
-      const csvContent = rows.join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'sales_report.csv';
-      link.click();
-    }
+        const prodForm = document.getElementById('productForm');
+        const prodId = document.getElementById('prodId');
+        const prodName = document.getElementById('prodName');
+        const prodPrice = document.getElementById('prodPrice');
+        const cancelEditBtn = document.getElementById('cancelEdit');
 
-    // Загружаем данные при открытии страницы
-    loadSales();
-  </script>
+        function loadProducts() {
+            fetch('/api/products')
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.querySelector('#productsTable tbody');
+                    tbody.innerHTML = '';
+                    data.forEach(p => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                  <td>${p.id}</td>
+                  <td>${p.name}</td>
+                  <td>${p.price}</td>
+                  <td>
+                    <button data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" class="editBtn">Изменить</button>
+                    <button data-id="${p.id}" class="delBtn">Удалить</button>
+                  </td>
+                `;
+                        tbody.appendChild(tr);
+                    });
+
+                    tbody.querySelectorAll('.editBtn').forEach(btn => {
+                        btn.onclick = () => {
+                            prodId.value = btn.dataset.id;
+                            prodName.value = btn.dataset.name;
+                            prodPrice.value = btn.dataset.price;
+                        };
+                    });
+                    tbody.querySelectorAll('.delBtn').forEach(btn => {
+                        btn.onclick = () => {
+                            if (confirm('Удалить товар?')) {
+                                fetch('/api/products/' + btn.dataset.id, { method: 'DELETE' })
+                                    .then(res => res.json())
+                                    .then(resp => {
+                                        if (resp.success) loadProducts();
+                                        else alert('Ошибка удаления');
+                                    });
+                            }
+                        };
+                    });
+                });
+        }
+
+        prodForm.onsubmit = e => {
+            e.preventDefault();
+            const idVal = prodId.value ? Number(prodId.value) : null;
+            const body = { name: prodName.value, price: Number(prodPrice.value) };
+            if (idVal) body.id = idVal;
+
+            fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+                .then(res => res.json())
+                .then(resp => {
+                    if (resp.success) {
+                        loadProducts();
+                        prodForm.reset();
+                        prodId.value = '';
+                    } else {
+                        alert('Ошибка сохранения');
+                    }
+                });
+        };
+
+        cancelEditBtn.onclick = () => {
+            prodForm.reset();
+            prodId.value = '';
+        };
+
+        // Загрузка продаж по дате
+        document.getElementById('loadSales').onclick = () => {
+            const date = document.getElementById('salesDate').value;
+            if (!date) {
+                alert('Выберите дату');
+                return;
+            }
+            fetch('/api/sales?date=' + date)
+                .then(res => res.json())
+                .then(data => {
+                    const tbody = document.querySelector('#salesTable tbody');
+                    tbody.innerHTML = '';
+                    let totalSum = 0;
+                    data.forEach(sale => {
+                        const sum = sale.price * sale.quantity;
+                        totalSum += sum;
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                  <td>${sale.seller_name}</td>
+                  <td>${sale.product_name}</td>
+                  <td>${sale.quantity}</td>
+                  <td>${sale.price}</td>
+                  <td>${new Date(sale.sale_time).toLocaleString()}</td>
+                  <td>${sum}</td>
+                `;
+                        tbody.appendChild(tr);
+                    });
+                    const trTotal = document.createElement('tr');
+                    trTotal.innerHTML = `<td colspan="5"><strong>Итого</strong></td><td><strong>${totalSum}</strong></td>`;
+                    tbody.appendChild(trTotal);
+                });
+        };
+
+        loadProducts();
+    </script>
 </body>
 </html>
