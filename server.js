@@ -8,6 +8,43 @@ app.use(express.static('public'));
 
 const db = new sqlite3.Database('./sales.db');
 
+// 🔄 Обновление/создание таблиц базы данных
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS sales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    time TEXT,
+    item TEXT,
+    quantity INTEGER,
+    seller TEXT
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS lunch_breaks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller TEXT,
+    date TEXT,
+    start_time TEXT,
+    end_time TEXT
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS stock_movements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller TEXT,
+    date TEXT,
+    type TEXT,         -- 'поступление' или 'перемещение'
+    item TEXT,
+    quantity INTEGER
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS daily_stock (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    seller TEXT,
+    date TEXT,
+    item TEXT,
+    quantity INTEGER
+  )`);
+});
+
+
 db.run(`CREATE TABLE IF NOT EXISTS sales (
     id INTEGER PRIMARY KEY,
     time TEXT,
