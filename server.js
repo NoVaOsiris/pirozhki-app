@@ -1,120 +1,215 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const path = require('path');
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.static('public'));
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 const db = new sqlite3.Database('./sales.db');
 
-// 🔄 Обновление/создание таблиц базы данных
 db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS sales (
+    // Таблицы
+    db.run(`CREATE TABLE IF NOT EXISTS sellers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    time TEXT,
-    item TEXT,
-    quantity INTEGER,
-    seller TEXT
+    name TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS lunch_breaks (
+    db.run(`CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller TEXT,
-    date TEXT,
-    start_time TEXT,
-    end_time TEXT
+    name TEXT UNIQUE NOT NULL,
+    price INTEGER NOT NULL
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS stock_movements (
+    db.run(`CREATE TABLE IF NOT EXISTS sales (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller TEXT,
-    date TEXT,
-    type TEXT,         -- 'поступление' или 'перемещение'
-    item TEXT,
-    quantity INTEGER
+    seller_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    sale_time TEXT NOT NULL,
+    FOREIGN KEY(seller_id) REFERENCES sellers(id),
+    FOREIGN KEY(product_id) REFERENCES products(id)
   )`);
 
-  db.run(`CREATE TABLE IF NOT EXISTS daily_stock (
+    db.run(`CREATE TABLE IF NOT EXISTS inventory (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    seller TEXT,
-    date TEXT,
-    item TEXT,
-    quantity INTEGER
+    seller_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    opening_balance INTEGER DEFAULT 0,
+    receipt INTEGER DEFAULT 0,
+    transfer INTEGER DEFAULT 0,
+    write_off INTEGER DEFAULT 0,
+    closing_balance INTEGER DEFAULT 0,
+    FOREIGN KEY(seller_id) REFERENCES sellers(id),
+    FOREIGN KEY(product_id) REFERENCES products(id)
   )`);
+
+    // Добавление точек и админа (если нет)
+    const sellers = [
+        { name: "mechnikova", password: "1234", role: "seller" },
+        { name: "borodinka", password: "1234", role: "seller" },
+        { name: "merkury", password: "1234", role: "seller" },
+        { name: "pochta", password: "1234", role: "seller" },
+        { name: "obzhorka", password: "1234", role: "seller" },
+        { name: "pyshka", password: "1234", role: "seller" },
+        { name: "klio", password: "1234", role: "seller" },
+        { name: "admin", password: "admin", role: "admin" },
+    ];
+    sellers.forEach(s => {
+        db.run(`INSERT OR IGNORE INTO sellers (name, password, role) VALUES (?, ?, ?)`, [s.name, s.password, s.role]);
+    });
+
+    // Добавление товаров (по твоему списку)
+    const products = [
+        { name: "Самса", price: 18 },
+        { name: "Конверт Мясо", price: 15 },
+        { name: "Конверт Творог", price: 15 },
+        { name: "Конверт Капуста", price: 15 },
+        { name: "Штрудель Мясо/грибы", price: 16 },
+        { name: "Пирожок печеный мясо", price: 8 },
+        { name: "Пирожок печеный творог", price: 8 },
+        { name: "Пирожок печеный капуста", price: 8 },
+        { name: "Пицца", price: 16 },
+        { name: "Ежик сырный", price: 13 },
+        { name: "Сосиска в тесте печеная", price: 11 },
+        { name: "Пирога", price: 20 },
+        { name: "Мини вет/сыр/зел", price: 6 },
+        { name: "Мини брын/творог", price: 6 },
+        { name: "Мини мясо", price: 6 },
+        { name: "Лодочка колб/сыр", price: 18 },
+        { name: "Лодочка грудка/гриб", price: 18 },
+        { name: "Синнанбон грудка/грибы", price: 18 },
+        { name: "Синнабон ветчина/брынза", price: 18 },
+        { name: "Шашлык куриный", price: 25 },
+        { name: "Гусарка", price: 16 },
+        { name: "Колосок сосиска/сыр", price: 17 },
+        { name: "Сэндвич", price: 16 },
+        { name: "Плацинда мясо/картошка", price: 18 },
+        { name: "Плацинда брынза/творог", price: 18 },
+        { name: "Плацинда капуста", price: 18 },
+        { name: "Беляш", price: 10 },
+        { name: "Сосиска в тесте жареная", price: 10 },
+        { name: "Пирожки жар. капуста", price: 7 },
+        { name: "Пирожки жарен. картошка", price: 7 },
+        { name: "Котлета жаренная", price: 10 },
+        { name: "Круассан шоколад", price: 15 },
+        { name: "Круассан кокос", price: 15 },
+        { name: "Мини абрикос", price: 6 },
+        { name: "Мини клубника", price: 6 },
+        { name: "Пончик с кремом", price: 18 },
+        { name: "Крендель", price: 11 },
+        { name: "Штрудель Вишня", price: 16 },
+        { name: "Штрудель Яблоко", price: 13 },
+        { name: "Булочка «Маковый рай»", price: 16 },
+        { name: "Булочка школьная", price: 7 },
+        { name: "Чебурек мясо", price: 15 },
+        { name: "Чебурек брынза", price: 15 },
+        { name: "Осетинский пирог", price: 15 },
+        { name: "Кармашек", price: 15 },
+    ];
+    products.forEach(p => {
+        db.run(`INSERT OR IGNORE INTO products (name, price) VALUES (?, ?)`, [p.name, p.price]);
+    });
 });
 
-
-db.run(`CREATE TABLE IF NOT EXISTS sales (
-    id INTEGER PRIMARY KEY,
-    time TEXT,
-    item TEXT,
-    quantity INTEGER
-)`);
-
-function login() {
-  const select = document.getElementById('sellerName');
-  const seller = select.value;
-  if (!seller || seller === "Выберите вашу точку") {
-    alert("Пожалуйста, выберите точку продаж");
-    return;
-  }
-  localStorage.setItem('seller', seller);
-  showSalesUI();
-}
-<script>
-async function login() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
-
-  const res = await fetch("/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
-
-  if (res.ok) {
-    const data = await res.json();
-    localStorage.setItem("seller", data.seller); // например "Мечникова"
-    showSalesUI();
-  } else {
-    alert("Неверный логин или пароль");
-  }
-}
-</script>
-const users = [
-  { username: "mechnikova", password: "1234", seller: "Мечникова" },
-  { username: "borodinka", password: "1234", seller: "Бородинка" },
-  { username: "merkury", password: "1234", seller: "Меркурий" },
-  { username: "pochta", password: "1234", seller: "Почта" },
-  { username: "obzhorka", password: "1234", seller: "Обжорка" },
-  { username: "pyshka", password: "1234", seller: "Пышка" },
-  { username: "klio", password: "1234", seller: "Клио" },
-];
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  const user = users.find(u => u.username === username && u.password === password);
-  if (user) {
-    res.json({ seller: user.seller });
-  } else {
-    res.status(401).send("Неверный логин или пароль");
-  }
+// Корень
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-
-app.post('/sale', (req, res) => {
-    const { item, quantity } = req.body;
-    const time = new Date().toISOString();
-    db.run('INSERT INTO sales (time, item, quantity) VALUES (?, ?, ?)', [time, item, quantity]);
-    res.sendStatus(200);
+// API - логин
+app.post('/api/login', (req, res) => {
+    const { name, password } = req.body;
+    db.get(`SELECT * FROM sellers WHERE name = ? AND password = ?`, [name, password], (err, row) => {
+        if (err) return res.status(500).json({ error: 'DB error' });
+        if (!row) return res.status(401).json({ error: 'Неверные данные' });
+        res.json({ id: row.id, name: row.name, role: row.role });
+    });
 });
 
-app.get('/admin', (req, res) => {
-    db.all('SELECT * FROM sales ORDER BY time DESC', [], (err, rows) => {
+// API - получить товары
+app.get('/api/products', (req, res) => {
+    db.all(`SELECT * FROM products ORDER BY name`, (err, rows) => {
+        if (err) return res.status(500).json({ error: 'DB error' });
         res.json(rows);
     });
 });
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+// API - добавить/редактировать товар (только админ)
+app.post('/api/products', (req, res) => {
+    const { id, name, price } = req.body;
+    if (id) {
+        db.run(`UPDATE products SET name = ?, price = ? WHERE id = ?`, [name, price, id], function (err) {
+            if (err) return res.status(500).json({ error: 'DB error' });
+            res.json({ success: true });
+        });
+    } else {
+        db.run(`INSERT INTO products (name, price) VALUES (?, ?)`, [name, price], function (err) {
+            if (err) return res.status(500).json({ error: 'DB error' });
+            res.json({ success: true, id: this.lastID });
+        });
+    }
+});
+
+// API - удалить товар (только админ)
+app.delete('/api/products/:id', (req, res) => {
+    const { id } = req.params;
+    db.run(`DELETE FROM products WHERE id = ?`, [id], function (err) {
+        if (err) return res.status(500).json({ error: 'DB error' });
+        res.json({ success: true });
+    });
+});
+
+// API - оформить продажу
+app.post('/api/sales', (req, res) => {
+    const { seller_id, items } = req.body; // items = [{product_id, quantity}]
+    const sale_time = new Date().toISOString();
+    if (!items || items.length === 0) return res.status(400).json({ error: 'Нет товаров' });
+
+    db.serialize(() => {
+        const stmt = db.prepare(`INSERT INTO sales (seller_id, product_id, quantity, sale_time) VALUES (?, ?, ?, ?)`);
+        items.forEach(item => {
+            stmt.run(seller_id, item.product_id, item.quantity, sale_time);
+        });
+        stmt.finalize(err => {
+            if (err) return res.status(500).json({ error: 'DB error' });
+            res.json({ success: true });
+        });
+    });
+});
+
+// API - получить продажи (фильтр по точке и дате)
+app.get('/api/sales', (req, res) => {
+    const { seller_id, date } = req.query;
+    let sql = `SELECT sales.id, sales.quantity, sales.sale_time, sellers.name as seller_name, products.name as product_name, products.price 
+             FROM sales JOIN sellers ON sales.seller_id = sellers.id 
+             JOIN products ON sales.product_id = products.id`;
+    const conditions = [];
+    const params = [];
+    if (seller_id) {
+        conditions.push('sales.seller_id = ?');
+        params.push(seller_id);
+    }
+    if (date) {
+        conditions.push('date(sale_time) = ?');
+        params.push(date);
+    }
+    if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
+    sql += ' ORDER BY sale_time DESC';
+
+    db.all(sql, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: 'DB error' });
+        res.json(rows);
+    });
+});
+
+app.listen(PORT, () => {
+    console.log(`Server started on http://localhost:${PORT}`);
 });
