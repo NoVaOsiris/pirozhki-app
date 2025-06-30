@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Продажа пирожков</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <h2>Выберите товар:</h2>
+  <button onclick="sell('Пирожок с мясом')">🥟 С мясом</button>
+  <button onclick="sell('Пирожок с капустой')">🥟 С капустой</button>
+
+  <script>
+    function sell(item) {
+      const quantity = prompt("Сколько штук?");
+      fetch('/sale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item, quantity: Number(quantity) })
+      }).then(() => alert("Продажа записана"));
+    }
+  </script>
+</body>
+</html>
