@@ -52,6 +52,46 @@ db.run(`CREATE TABLE IF NOT EXISTS sales (
     quantity INTEGER
 )`);
 
+function login() {
+  const select = document.getElementById('sellerName');
+  const seller = select.value;
+  if (!seller || seller === "Выберите вашу точку") {
+    alert("Пожалуйста, выберите точку продаж");
+    return;
+  }
+  localStorage.setItem('seller', seller);
+  showSalesUI();
+}
+<script>
+async function login() {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  const res = await fetch("/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (res.ok) {
+    const data = await res.json();
+    localStorage.setItem("seller", data.seller); // например "Мечникова"
+    showSalesUI();
+  } else {
+    alert("Неверный логин или пароль");
+  }
+}
+</script>
+const users = [
+  { username: "mechnikova", password: "1234", seller: "Мечникова" },
+  { username: "borodinka", password: "1234", seller: "Бородинка" },
+  { username: "merkury", password: "1234", seller: "Меркурий" },
+  { username: "pochta", password: "1234", seller: "Почта" },
+  { username: "obzhorka", password: "1234", seller: "Обжорка" },
+  { username: "pyshka", password: "1234", seller: "Пышка" },
+  { username: "klio", password: "1234", seller: "Клио" },
+];
+
 app.post('/sale', (req, res) => {
     const { item, quantity } = req.body;
     const time = new Date().toISOString();
